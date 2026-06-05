@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>콘텐츠 광고 운영</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1220; --card:#191d31; --card2:#1f2440; --line:#2a3050;
+    --txt:#e8eaf2; --sub:#9aa0c0; --accent:#6c8cff; --accent2:#36d399;
+    --warn:#ffb020; --danger:#ff5d6c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+       background:var(--bg);color:var(--txt);}
+  .topbar{position:sticky;top:0;z-index:10;background:#141829;border-bottom:1px solid var(--line);
+          padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .brand{font-size:18px;font-weight:700;white-space:nowrap}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{background:transparent;border:1px solid var(--line);color:var(--sub);
+       padding:8px 16px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600}
+  .tab:hover{color:var(--txt)}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .wrap{padding:24px}
+  .view{display:none}
+  .view.active{display:block}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+  h1{font-size:22px;margin:0}
+  .sub{color:var(--sub);font-size:13px;margin-top:6px}
+  .status{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:8px;justify-content:flex-end}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2)}
+  .dot.load{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+  .dot.err{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+  .card .k{color:var(--sub);font-size:13px;margin-bottom:8px}
+  .card .v{font-size:28px;font-weight:700}
+  .card .v small{font-size:14px;color:var(--sub);font-weight:500}
+  .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+  .panel h2{font-size:15px;margin:0 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:11px 10px;text-align:left;border-bottom:1px solid var(--line)}
+  th{color:var(--sub);font-weight:600;font-size:12px;white-space:nowrap}
+  tr:hover td{background:var(--card2)}
+  .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600}
+  .tag.free{background:rgba(108,140,255,.15);color:#9db4ff}
+  .tag.biz{background:rgba(54,211,153,.15);color:#5be0ad}
+  .tag.cat{background:rgba(167,139,250,.15);color:#c4b5fd}
+  .due{font-weight:600}
+  .due.soon{color:var(--warn)}
+  .due.over{color:var(--danger)}
+  .money{font-variant-numeric:tabular-nums;font-weight:600}
+  a.link{color:#9db4ff;text-decoration:none}
+  a.link:hover{text-decoration:underline}
+  .foot{color:var(--sub);font-size:12px;text-align:center;margin-top:8px}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:8px 14px;
+       font-size:13px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block}
+  .btn:hover{opacity:.9}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+  .empty{color:var(--sub);text-align:center;padding:30px}
+  .search{background:var(--card2);border:1px solid var(--line);color:var(--txt);
+          border-radius:10px;padding:9px 14px;font-size:14px;width:260px;max-width:60vw}
+  .search::placeholder{color:var(--sub)}
+  /* AI모델 갤러리 */
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  a.gcard{display:block;background:var(--card2);border:1px solid var(--line);border-radius:14px;
+          overflow:hidden;text-decoration:none;color:var(--txt);transition:transform .12s,border-color .12s}
+  a.gcard:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .gcard .imgwrap{aspect-ratio:3/4;background:#0c0f1a;overflow:hidden}
+  .gcard img{width:100%;height:100%;object-fit:cover;display:block}
+  .gcard .meta{padding:10px 12px}
+  .gcard .nm{font-size:13px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 상태 뱃지 (광고소재 기획안) */
+  .st{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+  .st.todo{background:rgba(154,160,192,.18);color:#c3c8e0}
+  .st.prog{background:rgba(108,140,255,.18);color:#9db4ff}
+  .st.appr{background:rgba(54,211,153,.18);color:#5be0ad}
+  .st.done{background:rgba(255,93,156,.18);color:#ff9ec2}
+  .tag.prod{background:rgba(255,176,32,.15);color:#ffd089}
+  /* 제품별 그룹 + 칩 */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .chip{background:transparent;border:1px solid var(--line);color:var(--sub);padding:6px 13px;
+        border-radius:999px;cursor:pointer;font-size:13px;font-weight:600}
+  .chip:hover{color:var(--txt)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  tr.grouphead td{background:var(--card2);font-weight:700;font-size:13px;
+        border-bottom:1px solid var(--line);padding:10px 12px}
+  tr.grouphead .gcount{color:var(--sub);font-weight:500;font-size:12px;margin-left:8px}
+  /* 담당 편집자 태그 */
+  .tag.ed{font-weight:600}
+  .ed-blue{background:rgba(108,140,255,.18);color:#9db4ff}
+  .ed-green{background:rgba(54,211,153,.18);color:#5be0ad}
+  .ed-orange{background:rgba(255,176,32,.18);color:#ffd089}
+  .ed-purple{background:rgba(167,139,250,.2);color:#c4b5fd}
+  .ed-pink{background:rgba(255,93,156,.18);color:#ff9ec2}
+  .ed-gray{background:rgba(154,160,192,.18);color:#c3c8e0}
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">📊 콘텐츠 광고 운영</div>
+    <div class="tabs">
+      <button class="tab active" data-view="thisweek">🔥 이번 주 진행</button>
+      <button class="tab" data-view="metaplan">📝 광고소재 기획안</button>
+      <button class="tab" data-view="editor">📋 편집자 관리</button>
+      <button class="tab" data-view="assign">🧑‍💻 편집자 배정</button>
+      <button class="tab" data-view="reference">🎬 레퍼런스 리스트</button>
+      <button class="tab" data-view="aimodel">✨ AI모델</button>
+      <!-- 새 탭 추가는 여기에 버튼 한 줄 + 아래 section 한 개만 더 만들면 됩니다 -->
+    </div>
+  </div>
+
+  <div class="wrap">
+
+  <!-- ============ 탭 0: 이번 주 진행 (메타 기획안 · 진행도 미체크) ============ -->
+  <section class="view active" id="view-thisweek">
+    <div class="head">
+      <div>
+        <h1>🔥 이번 주 진행 광고</h1>
+        <div class="sub">노션 "01 광고소재 기획안" 첫 화면 · 진행도 미체크(컨펌 완료 제외) · 제품별</div>
+      </div>
+      <div class="status" style="align-self:center"><span class="dot" id="dotW"></span><span id="statusW">불러오는 중…</span></div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">이번 주 총</div><div class="v" id="kpiWeek">–</div></div>
+      <div class="card"><div class="k">확인 전</div><div class="v" id="kpiWeekTodo">–</div></div>
+      <div class="card"><div class="k">컨펌 중</div><div class="v" id="kpiWeekProg">–</div></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <h2 style="margin:0">이번 주 진행할 기획안 <span style="color:var(--sub);font-weight:400;font-size:12px">· 제목을 누르면 노션에서 열려요</span></h2>
+        <input class="search" id="weekSearch" placeholder="🔍 기획안·제품 검색…" oninput="renderThisWeek()" />
+      </div>
+      <div class="chips" id="weekChips"></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>기획안</th><th>제품</th><th>담당 편집자</th><th>대표님 컨펌</th><th>생성일</th></tr></thead>
+          <tbody id="tbodyW"></tbody>
+        </table>
+      </div>
+      <div class="foot" id="footW"></div>
+    </div>
+  </section>
+
+  <!-- ============ 탭 1: 편집자 관리 ============ -->
+  <section class="view" id="view-editor">
+    <div class="head">
+      <div>
+        <h1>🎬 영상편집자 관리</h1>
+        <div class="sub">구글 시트 실시간 연동 · 60초마다 자동 새로고침</div>
+      </div>
+      <div style="text-align:right">
+        <div class="status"><span class="dot" id="dot1"></span><span id="status1">불러오는 중…</span></div>
+        <button class="btn" style="margin-top:8px" onclick="loadEditor()">🔄 지금 새로고침</button>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">총 편집자</div><div class="v" id="kpiPeople">–</div></div>
+      <div class="card"><div class="k">총 요청 건수</div><div class="v" id="kpiJobs">–</div></div>
+      <div class="card"><div class="k">총 지급 예정액</div><div class="v money" id="kpiPay">–</div></div>
+      <div class="card"><div class="k">기한 임박 (3일 내)</div><div class="v" id="kpiDue">–</div></div>
+    </div>
+    <div class="grid">
+      <div class="panel"><h2>편집자별 지급 예정액</h2><canvas id="payChart" height="160"></canvas></div>
+      <div class="panel"><h2>분류별 인원</h2><canvas id="typeChart" height="160"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>편집자 목록</h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>이름</th><th>분류</th><th>연락처</th><th>진행 단가</th>
+            <th>요청</th><th>진행 상황</th><th>기한</th><th>지급액</th><th>비고</th>
+          </tr></thead>
+          <tbody id="tbody1"></tbody>
+        </table>
+      </div>
+      <div class="foot" id="foot1"></div>
+    </div>
+  </section>
+
+  <!-- ============ 탭 2: 레퍼런스 리스트 (시트 실시간 연동) ============ -->
+  <section class="view" id="view-reference">
+    <div class="head">
+      <div>
+        <h1>🎬 레퍼런스 리스트</h1>
+        <div class="sub">브랜드 레퍼런스 수집 현황 · 구글 시트 실시간 연동</div>
+      </div>
+      <div style="text-align:right">
+        <div class="status"><span class="dot" id="dot2"></span><span id="status2">불러오는 중…</span></div>
+        <button class="btn" style="margin-top:8px" onclick="loadRef()">🔄 지금 새로고침</button>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">총 브랜드</div><div class="v" id="kpiBrand">–</div></div>
+      <div class="card"><div class="k">자사몰 URL 등록</div><div class="v" id="kpiUrl">–</div></div>
+      <div class="card"><div class="k">카테고리 종류</div><div class="v" id="kpiCat">–</div></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <h2 style="margin:0">브랜드 목록</h2>
+        <input class="search" id="refSearch" placeholder="🔍 브랜드·카테고리 검색…" oninput="renderRef()" />
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>브랜드명</th><th>카테고리</th><th>자사몰 URL</th><th>마지막 수집일</th><th>비고</th>
+          </tr></thead>
+          <tbody id="tbody2"></tbody>
+        </table>
+      </div>
+      <div class="foot" id="foot2"></div>
+    </div>
+  </section>
+
+  <!-- ============ 탭 3: AI모델 (노션 사진 화면 안 갤러리) ============ -->
+  <section class="view" id="view-aimodel">
+    <div class="head">
+      <div>
+        <h1>✨ AI모델</h1>
+        <div class="sub">노션 자동화 갤러리 · 통과(체크) 모델 사진을 화면 안에서 바로 표시</div>
+      </div>
+      <a class="btn ghost" href="https://violet-tumble-0a4.notion.site/360014dd630a8059a51ceaba2616e955?v=36f014dd630a81fb810f000c0274c7ba"
+         target="_blank" rel="noopener">↗ 노션에서 보기</a>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">통과 모델</div><div class="v" id="kpiModel">–</div></div>
+      <div class="card"><div class="k">일반인 계열</div><div class="v" id="kpiNormal">–</div></div>
+      <div class="card"><div class="k">예쁜모델 계열</div><div class="v" id="kpiPretty">–</div></div>
+    </div>
+    <div class="panel">
+      <h2>모델 갤러리 <span style="color:var(--sub);font-weight:400;font-size:12px">· 카드를 누르면 원본 사진이 열려요</span></h2>
+      <div class="gallery" id="gallery"></div>
+      <div class="foot" id="foot3"></div>
+    </div>
+  </section>
+
+  <!-- ============ 탭 4: 광고소재 기획안 (메타) ============ -->
+  <section class="view" id="view-metaplan">
+    <div class="head">
+      <div>
+        <h1>📝 광고소재 기획안 (Meta)</h1>
+        <div class="sub">노션 "광고소재 기획안" DB 자동 연동 · 최신순</div>
+      </div>
+      <div class="status" style="align-self:center"><span class="dot" id="dot4"></span><span id="status4">불러오는 중…</span></div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">총 기획안</div><div class="v" id="kpiPlan">–</div></div>
+      <div class="card"><div class="k">제작 완료</div><div class="v" id="kpiPlanDone">–</div></div>
+      <div class="card"><div class="k">컨펌 중</div><div class="v" id="kpiPlanProg">–</div></div>
+      <div class="card"><div class="k">확인 전</div><div class="v" id="kpiPlanTodo">–</div></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <h2 style="margin:0">기획안 목록 <span style="color:var(--sub);font-weight:400;font-size:12px">· 제목을 누르면 노션에서 열려요</span></h2>
+        <input class="search" id="planSearch" placeholder="🔍 기획안·제품 검색…" oninput="renderMetaPlan()" />
+      </div>
+      <div class="chips" id="planChips"></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>기획안</th><th>제품</th><th>담당 편집자</th><th>대표님 컨펌</th><th>진행도</th><th>생성일</th>
+          </tr></thead>
+          <tbody id="tbody4"></tbody>
+        </table>
+      </div>
+      <div class="foot" id="foot4"></div>
+    </div>
+  </section>
+
+  <!-- ============ 탭: 편집자 배정 ============ -->
+  <section class="view" id="view-assign">
+    <div class="head">
+      <div>
+        <h1>🧑‍💻 편집자 배정</h1>
+        <div class="sub">진행 중(미완료) 기획안의 담당 편집자 · 노션에서 '담당 편집자' 지정 시 자동 반영</div>
+      </div>
+      <div class="status" style="align-self:center"><span class="dot" id="dotA"></span><span id="statusA">불러오는 중…</span></div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">진행 기획안</div><div class="v" id="kpiAsgTotal">–</div></div>
+      <div class="card"><div class="k">배정 완료</div><div class="v" id="kpiAsgDone">–</div></div>
+      <div class="card"><div class="k">미배정</div><div class="v" id="kpiAsgNone">–</div></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <h2 style="margin:0">편집자별 배정 현황 <span style="color:var(--sub);font-weight:400;font-size:12px">· 제목을 누르면 노션에서 열려요</span></h2>
+        <input class="search" id="asgSearch" placeholder="🔍 기획안·제품 검색…" oninput="renderAssign()" />
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>기획안</th><th>제품</th><th>대표님 컨펌</th><th>생성일</th></tr></thead>
+          <tbody id="tbodyA"></tbody>
+        </table>
+      </div>
+      <div class="foot" id="footA"></div>
+    </div>
+  </section>
+
+  </div>
+
+<script>
+// ===================== 설정 =====================
+const EDITOR_SHEET = "1pxqoE77H4p2GN8PKiEl-hAB2F2pwx7dgH6_e37_3cdM", EDITOR_GID = "0";
+const REF_SHEET    = "1TzGzD3BtvSYYcj8BqR5lXNeM4AxqOJ-Fx4jlf6jdAkk", REF_GID    = "0";
+const REFRESH_MS = 60000;
+// ================================================
+
+let payChart, typeChart, jsonpSeq = 0, refData = [];
+
+// ----- 탭 전환 -----
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-' + t.dataset.view).classList.add('active');
+  });
+});
+
+// ----- 공통 유틸 -----
+function setDot(id,txtId,state,msg){
+  document.getElementById(id).className = 'dot' + (state==='load'?' load':state==='err'?' err':'');
+  document.getElementById(txtId).textContent = msg;
+}
+const num = s => { const n = parseInt(String(s||'').replace(/[^0-9-]/g,''),10); return isNaN(n)?0:n; };
+const won = n => '₩' + n.toLocaleString('ko-KR');
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// gviz를 <script> 방식(JSONP)으로 불러옴 (브라우저 CORS/파일열기 제한 회피)
+function fetchGviz(sheetId, gid){
+  return new Promise((resolve, reject)=>{
+    const cb = '__gvizCb' + (++jsonpSeq);
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq`
+      + `?tqx=out:json;responseHandler:${cb}&gid=${gid}&t=${Date.now()}`;
+    const s = document.createElement('script');
+    const timer = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 15000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = (json)=>{ cleanup(); resolve(json); };
+    s.onerror = ()=>{ cleanup(); reject(new Error('script error')); };
+    s.src = url;
+    document.body.appendChild(s);
+  });
+}
+function colIndexer(json){
+  const cols = json.table.cols.map(c => (c.label||'').trim());
+  return name => cols.findIndex(c => c.replace(/\s/g,'').includes(name));
+}
+const cellOf = r => (i)=> (i>=0 && r.c[i]) ? (r.c[i].f ?? r.c[i].v) : '';
+
+function parseDate(s){
+  if(!s) return null;
+  const m = String(s).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  return m ? new Date(+m[1], +m[2]-1, +m[3]) : null;
+}
+function dueClass(d){
+  if(!d) return '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = (d - today)/86400000;
+  return diff<0 ? 'over' : diff<=3 ? 'soon' : '';
+}
+
+// ===================== 탭 1: 편집자 =====================
+async function loadEditor(){
+  setDot('dot1','status1','load','불러오는 중…');
+  try{
+    const json = await fetchGviz(EDITOR_SHEET, EDITOR_GID);
+    const idx = colIndexer(json);
+    const ci = { name:idx('이름'), type:idx('분류'), tel:idx('연락처'), price:idx('단가'),
+                 cnt:idx('요청'), prog:idx('진행상황'), due:idx('기한'), pay:idx('지급액'), note:idx('비고') };
+    const people = [];
+    for(const r of json.table.rows){
+      const g = cellOf(r);
+      const nm = String(g(ci.name)||'').trim();
+      if(!nm || nm==='이름') continue;
+      people.push({ name:nm, type:String(g(ci.type)||'').trim(), tel:String(g(ci.tel)||'').trim(),
+        price:g(ci.price), cnt:g(ci.cnt), prog:String(g(ci.prog)||'').trim(),
+        due:g(ci.due), pay:g(ci.pay), note:String(g(ci.note)||'').trim() });
+    }
+    renderEditor(people);
+    setDot('dot1','status1','ok','연결됨 · ' + new Date().toLocaleTimeString('ko-KR'));
+  }catch(e){ console.error(e); setDot('dot1','status1','err','연결 실패 — 시트 공유 확인'); }
+}
+function renderEditor(people){
+  const totalPay = people.reduce((s,p)=>s+num(p.pay),0);
+  const totalJobs = people.reduce((s,p)=>s+num(p.cnt),0);
+  let dueSoon = 0;
+  people.forEach(p=>{ const c=dueClass(parseDate(p.due)); if(c) dueSoon++; });
+  kpi('kpiPeople', people.length, '명'); kpi('kpiJobs', totalJobs, '건');
+  document.getElementById('kpiPay').textContent = won(totalPay);
+  kpi('kpiDue', dueSoon, '명');
+
+  const tb = document.getElementById('tbody1');
+  tb.innerHTML = people.length ? people.map(p=>{
+    const isBiz = p.type.includes('업체');
+    const dc = dueClass(parseDate(p.due));
+    const dpfx = dc==='over'?'⚠ ':dc==='soon'?'⏰ ':'';
+    return `<tr>
+      <td><b>${esc(p.name)}</b></td>
+      <td><span class="tag ${isBiz?'biz':'free'}">${esc(p.type)||'-'}</span></td>
+      <td>${esc(p.tel)||'-'}</td>
+      <td class="money">${p.price?won(num(p.price)):'-'}</td>
+      <td>${esc(p.cnt)||'-'}</td>
+      <td>${esc(p.prog)||'-'}</td>
+      <td class="due ${dc}">${dpfx}${esc(p.due)||'-'}</td>
+      <td class="money">${p.pay?won(num(p.pay)):'-'}</td>
+      <td style="color:var(--sub)">${esc(p.note)||'-'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" class="empty">데이터가 없습니다</td></tr>';
+  document.getElementById('foot1').textContent = `총 ${people.length}명 · 합계 지급 예정 ${won(totalPay)}`;
+
+  const labels = people.map(p=>p.name), payData = people.map(p=>num(p.pay));
+  if(payChart) payChart.destroy();
+  payChart = new Chart(document.getElementById('payChart'), {
+    type:'bar', data:{labels, datasets:[{data:payData, backgroundColor:'#6c8cff', borderRadius:6}]},
+    options:{plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#9aa0c0'},grid:{display:false}},
+              y:{ticks:{color:'#9aa0c0',callback:v=>'₩'+(v/1000)+'k'},grid:{color:'#2a3050'}}}}
+  });
+  const typeMap = {};
+  people.forEach(p=>{ const k=p.type||'미지정'; typeMap[k]=(typeMap[k]||0)+1; });
+  if(typeChart) typeChart.destroy();
+  typeChart = new Chart(document.getElementById('typeChart'), {
+    type:'doughnut',
+    data:{labels:Object.keys(typeMap), datasets:[{data:Object.values(typeMap),
+      backgroundColor:['#6c8cff','#36d399','#ffb020','#ff5d6c','#a78bfa']}]},
+    options:{plugins:{legend:{position:'bottom',labels:{color:'#e8eaf2'}}}}
+  });
+}
+function kpi(id,val,unit){ document.getElementById(id).innerHTML = val + (unit?`<small> ${unit}</small>`:''); }
+
+// ===================== 탭 2: 레퍼런스 =====================
+async function loadRef(){
+  setDot('dot2','status2','load','불러오는 중…');
+  try{
+    const json = await fetchGviz(REF_SHEET, REF_GID);
+    const idx = colIndexer(json);
+    let ci = { name:idx('브랜드'), cat:idx('카테고리'), url:idx('URL'), date:idx('수집일'), note:idx('비고') };
+    // 헤더가 데이터 행에 있을 수 있어 위치 보정 (라벨이 비어있으면 0~4 순서로)
+    if(ci.name<0) ci = { name:0, cat:1, url:2, date:3, note:4 };
+    const list = [];
+    for(const r of json.table.rows){
+      const g = cellOf(r);
+      const nm = String(g(ci.name)||'').trim();
+      if(!nm || nm==='브랜드명') continue;
+      list.push({ name:nm, cat:String(g(ci.cat)||'').trim(), url:String(g(ci.url)||'').trim(),
+                  date:String(g(ci.date)||'').trim(), note:String(g(ci.note)||'').trim() });
+    }
+    refData = list;
+    renderRef();
+    setDot('dot2','status2','ok','연결됨 · ' + new Date().toLocaleTimeString('ko-KR'));
+  }catch(e){ console.error(e); setDot('dot2','status2','err','연결 실패 — 시트 공유 확인'); }
+}
+function renderRef(){
+  const q = (document.getElementById('refSearch').value||'').trim().toLowerCase();
+  const cats = new Set(refData.map(b=>b.cat).filter(Boolean));
+  kpi('kpiBrand', refData.length, '개');
+  kpi('kpiUrl', refData.filter(b=>b.url).length, '개');
+  kpi('kpiCat', cats.size, '종');
+
+  const shown = refData.filter(b =>
+    !q || b.name.toLowerCase().includes(q) || b.cat.toLowerCase().includes(q));
+  const tb = document.getElementById('tbody2');
+  tb.innerHTML = shown.length ? shown.map(b=>{
+    let host = b.url;
+    try{ host = new URL(b.url).hostname.replace(/^www\./,''); }catch(_){}
+    const urlCell = b.url
+      ? `<a class="link" href="${esc(b.url)}" target="_blank" rel="noopener">${esc(host)} ↗</a>` : '-';
+    return `<tr>
+      <td><b>${esc(b.name)}</b></td>
+      <td><span class="tag cat">${esc(b.cat)||'-'}</span></td>
+      <td>${urlCell}</td>
+      <td>${esc(b.date)||'<span style="color:var(--sub)">미수집</span>'}</td>
+      <td style="color:var(--sub)">${esc(b.note)||'-'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty">검색 결과가 없습니다</td></tr>';
+  document.getElementById('foot2').textContent =
+    q ? `${shown.length} / ${refData.length}개 표시` : `총 ${refData.length}개 브랜드`;
+}
+
+// ===================== 탭 3: AI모델 (노션 사진) =====================
+// 노션 공개사이트의 안정적 이미지 주소를 사용 → 만료 없이 화면 안에서 바로 표시.
+// 노션에 모델을 새로 추가/삭제하면 이 목록을 다시 동기화해야 반영됩니다.
+const NOTION_SITE = "https://violet-tumble-0a4.notion.site";
+const AIMODEL_SPACE = "0f1014dd-630a-814f-9d2b-0003710684d4";
+// 폴백 목록(자동 동기화 파일이 아직 없을 때 사용). 안정적 프록시 주소.
+const AIMODELS_FALLBACK = [
+  {name:"AI 모델 03",        pageId:"36f014dd-630a-81f1-a99b-e1221e253eb3", src:"attachment:58be2f8b-c44c-4681-a99d-d59b71b291c6:model_03.png",      tags:[]},
+  {name:"일반인모델 05/29 #1", pageId:"36f014dd-630a-818e-b13a-de787f729938", src:"attachment:af651fb9-5454-48a6-ae18-d825650fd06e:normal_01.png",     tags:[]},
+  {name:"프로 일반인모델 1",   pageId:"36f014dd-630a-810a-9fc9-ddf72edb2df8", src:"attachment:79e98450-06e6-41ef-b274-102e94c8c335:normal_pro_01.png", tags:[]},
+  {name:"프로 일반인모델 2",   pageId:"36f014dd-630a-811e-81f5-d90dd0c7b2fa", src:"attachment:b26e9d0b-b9bd-4129-89ef-7e4d39d4bcb3:normal_pro_02.png", tags:[]},
+  {name:"프로 일반인모델 3",   pageId:"36f014dd-630a-816d-9992-e45205d58b46", src:"attachment:14af5e5a-d778-46a1-873c-3996a0958c69:normal_pro_03.png", tags:[]},
+  {name:"프로 예쁜모델 1",     pageId:"36f014dd-630a-8122-838a-e80394c4c692", src:"attachment:dbf1e41e-60ce-469d-ad0c-13aa158a56ab:pretty_pro_01.png", tags:[]},
+  {name:"프로 예쁜모델 2",     pageId:"36f014dd-630a-81ca-a763-e1adf015dbbf", src:"attachment:a9fe24b2-7484-4f3e-b2b5-54e7ab844c2a:pretty_pro_02.png", tags:[]},
+  {name:"프로 예쁜모델 3",     pageId:"36f014dd-630a-8108-81ca-c92fbb49cbeb", src:"attachment:1c985b4b-bc71-4929-a741-58c74c496b2e:pretty_pro_03.png", tags:[]},
+  {name:"예쁜모델 05/29 #1",  pageId:"36f014dd-630a-81d6-8e75-f8a260607fb2", src:"attachment:4fe01fc0-2d5e-4348-96cd-26d0a10aeb34:pretty_01.png",     tags:[]},
+];
+let aimodelData = AIMODELS_FALLBACK;   // 동기화 파일이 로드되면 교체됨
+let aimodelSynced = null;
+
+function modelImg(m){
+  if(m.img) return m.img;              // 자동 동기화된 직접 사진 주소
+  return `${NOTION_SITE}/image/${encodeURIComponent(m.src)}`   // 폴백(프록시)
+    + `?table=block&id=${m.pageId}&spaceId=${AIMODEL_SPACE}&width=640&cache=v2`;
+}
+function renderAimodel(){
+  const list = aimodelData || [];
+  kpi('kpiModel', list.length, '개');
+  kpi('kpiNormal', list.filter(m=>m.name.includes('일반인')).length, '개');
+  kpi('kpiPretty', list.filter(m=>m.name.includes('예쁜')).length, '개');
+  document.getElementById('gallery').innerHTML = list.map(m=>{
+    const u = modelImg(m);
+    const tags = (m.tags||[]).map(t=>`<span class="tag cat">${esc(t)}</span>`).join(' ');
+    return `<a class="gcard" href="${u}" target="_blank" rel="noopener" title="${esc(m.name)}">
+      <div class="imgwrap"><img loading="lazy" src="${u}" alt="${esc(m.name)}"></div>
+      <div class="meta"><div class="nm">${esc(m.name)}</div>${tags}</div>
+    </a>`;
+  }).join('');
+  const when = aimodelSynced ? ' · 동기화 ' + aimodelSynced.replace('T',' ').slice(0,16) : '';
+  document.getElementById('foot3').textContent = `총 ${list.length}개 모델 · 노션 자동 연동${when}`;
+}
+// 자동 동기화 파일(aimodels.js)이 호출하는 콜백
+window.__setAimodels = function(models, stamp){
+  if(Array.isArray(models) && models.length){ aimodelData = models; aimodelSynced = stamp || null; }
+  renderAimodel();
+};
+// aimodels.js 를 <script> 로 주입해 최신 동기화 결과를 가져옴(파일열기 제한 회피)
+function loadAimodelsFile(){
+  const s = document.createElement('script');
+  s.src = 'aimodels.js?t=' + Date.now();
+  s.onload = ()=>s.remove();
+  s.onerror = ()=>s.remove();   // 아직 파일이 없으면 폴백 유지
+  document.body.appendChild(s);
+}
+
+// ===================== 탭 4: 광고소재 기획안 (메타) =====================
+let planData = null, planSynced = null, planFilter = null;
+const STATUS_CLASS = { "확인 전":"todo", "컨펌 중":"prog", "승인 완료":"appr", "제작 완료":"done" };
+const PRODUCT_ORDER = ["살성크림","살성 미스트","퓨어렌","흰사렌","몸사렌","베베크림"];
+const EDITOR_ORDER = ["김나연","최서아","서다민","함신영(대표)","박설"];
+const EDITOR_COLOR = {"김나연":"ed-blue","최서아":"ed-green","서다민":"ed-orange","함신영(대표)":"ed-purple","박설":"ed-pink"};
+function editorTags(eds){
+  if(!eds || !eds.length) return '<span style="color:var(--sub)">미배정</span>';
+  return eds.map(e=>`<span class="tag ed ${EDITOR_COLOR[e]||'ed-gray'}">${esc(e)}</span>`).join(' ');
+}
+window.__setMetaPlan = function(rows, stamp){
+  planData = Array.isArray(rows) ? rows : [];
+  planSynced = stamp || null;
+  setDot('dot4','status4','ok','연결됨' + (stamp? ' · '+stamp.replace('T',' ').slice(0,16):''));
+  renderMetaPlan();
+  renderThisWeek();
+  renderAssign();
+};
+function setPlanFilter(p){ planFilter = (planFilter===p ? null : p); renderMetaPlan(); }
+
+function rowHtml(r){
+  const sc = STATUS_CLASS[r.status] || 'todo';
+  const titleCell = r.url
+    ? `<a class="link" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title);
+  return `<tr>
+    <td><b>${titleCell}</b></td>
+    <td>${r.product?`<span class="tag prod">${esc(r.product)}</span>`:'-'}</td>
+    <td>${editorTags(r.editors)}</td>
+    <td>${r.status?`<span class="st ${sc}">${esc(r.status)}</span>`:'-'}</td>
+    <td>${r.done?'✅':'<span style="color:var(--sub)">—</span>'}</td>
+    <td style="color:var(--sub)">${esc((r.created||'').slice(0,10))}</td>
+  </tr>`;
+}
+
+function renderMetaPlan(){
+  if(!planData){ return; }
+  const list = planData;
+  const cnt = s => list.filter(r=>r.status===s).length;
+  kpi('kpiPlan', list.length, '개');
+  kpi('kpiPlanDone', cnt('제작 완료'), '개');
+  kpi('kpiPlanProg', cnt('컨펌 중'), '개');
+  kpi('kpiPlanTodo', cnt('확인 전'), '개');
+
+  const q = (document.getElementById('planSearch').value||'').trim().toLowerCase();
+  const searched = list.filter(r =>
+    !q || (r.title||'').toLowerCase().includes(q) || (r.product||'').toLowerCase().includes(q));
+
+  // 제품 순서: 정해진 순서 먼저, 그 외(미지정 포함) 뒤에
+  const present = [...new Set(searched.map(r=>r.product||'미지정'))];
+  const ordered = [...PRODUCT_ORDER.filter(p=>present.includes(p)),
+                   ...present.filter(p=>!PRODUCT_ORDER.includes(p))];
+
+  // 제품 바로가기 칩 (검색 반영 카운트)
+  const chipsEl = document.getElementById('planChips');
+  const allOn = planFilter===null ? 'on' : '';
+  let chips = `<button class="chip ${allOn}" onclick="setPlanFilter(null)">전체 <span style="opacity:.7">${searched.length}</span></button>`;
+  chips += ordered.map(p=>{
+    const c = searched.filter(r=>(r.product||'미지정')===p).length;
+    const on = planFilter===p ? 'on' : '';
+    return `<button class="chip ${on}" onclick="setPlanFilter('${p.replace(/'/g,"\\'")}')">${esc(p)} <span style="opacity:.7">${c}</span></button>`;
+  }).join('');
+  chipsEl.innerHTML = chips;
+
+  // 표: 제품별 그룹 헤더 + 행
+  const groups = planFilter ? [planFilter] : ordered;
+  const tb = document.getElementById('tbody4');
+  let html = '', total = 0;
+  for(const p of groups){
+    const rows = searched.filter(r=>(r.product||'미지정')===p);
+    if(!rows.length) continue;
+    total += rows.length;
+    const done = rows.filter(r=>r.status==='제작 완료').length;
+    html += `<tr class="grouphead"><td colspan="6">${esc(p)}
+      <span class="gcount">${rows.length}개 · 제작 완료 ${done}</span></td></tr>`;
+    html += rows.map(rowHtml).join('');
+  }
+  tb.innerHTML = total ? html : '<tr><td colspan="6" class="empty">결과가 없습니다</td></tr>';
+  const fil = planFilter ? `· ${planFilter}만` : '';
+  document.getElementById('foot4').textContent =
+    (q||planFilter) ? `${total} / ${list.length}개 표시 ${fil}` : `총 ${list.length}개 기획안 · 제품별 묶음 · 노션 자동 연동`;
+}
+function loadMetaPlanFile(){
+  const s = document.createElement('script');
+  s.src = 'metaplan.js?t=' + Date.now();
+  s.onload = ()=>s.remove();
+  s.onerror = ()=>{ s.remove(); setDot('dot4','status4','err','동기화 파일 없음'); setDot('dotW','statusW','err','동기화 파일 없음'); setDot('dotA','statusA','err','동기화 파일 없음'); };
+  document.body.appendChild(s);
+}
+
+// ----- 이번 주 진행(진행도 미체크 = 컨펌 완료 제외), 제품별 -----
+let weekFilter = null;
+function setWeekFilter(p){ weekFilter = (weekFilter===p ? null : p); renderThisWeek(); }
+function rowHtmlWeek(r){
+  const sc = STATUS_CLASS[r.status] || 'todo';
+  const titleCell = r.url
+    ? `<a class="link" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title);
+  return `<tr>
+    <td><b>${titleCell}</b></td>
+    <td>${r.product?`<span class="tag prod">${esc(r.product)}</span>`:'-'}</td>
+    <td>${editorTags(r.editors)}</td>
+    <td>${r.status?`<span class="st ${sc}">${esc(r.status)}</span>`:'-'}</td>
+    <td style="color:var(--sub)">${esc((r.created||'').slice(0,10))}</td>
+  </tr>`;
+}
+function renderThisWeek(){
+  if(!planData){ return; }
+  const base = planData.filter(r=>!r.done);   // 진행도 미체크 = 이번 주 진행
+  setDot('dotW','statusW','ok','연결됨' + (planSynced? ' · '+planSynced.replace('T',' ').slice(0,16):''));
+  const cnt = s => base.filter(r=>r.status===s).length;
+  kpi('kpiWeek', base.length, '개');
+  kpi('kpiWeekTodo', cnt('확인 전'), '개');
+  kpi('kpiWeekProg', cnt('컨펌 중'), '개');
+
+  const q = (document.getElementById('weekSearch').value||'').trim().toLowerCase();
+  const searched = base.filter(r =>
+    !q || (r.title||'').toLowerCase().includes(q) || (r.product||'').toLowerCase().includes(q));
+  const present = [...new Set(searched.map(r=>r.product||'미지정'))];
+  const ordered = [...PRODUCT_ORDER.filter(p=>present.includes(p)),
+                   ...present.filter(p=>!PRODUCT_ORDER.includes(p))];
+
+  let chips = `<button class="chip ${weekFilter===null?'on':''}" onclick="setWeekFilter(null)">전체 <span style="opacity:.7">${searched.length}</span></button>`;
+  chips += ordered.map(p=>{
+    const c = searched.filter(r=>(r.product||'미지정')===p).length;
+    return `<button class="chip ${weekFilter===p?'on':''}" onclick="setWeekFilter('${p.replace(/'/g,"\\'")}')">${esc(p)} <span style="opacity:.7">${c}</span></button>`;
+  }).join('');
+  document.getElementById('weekChips').innerHTML = chips;
+
+  const groups = weekFilter ? [weekFilter] : ordered;
+  let html = '', total = 0;
+  for(const p of groups){
+    const rows = searched.filter(r=>(r.product||'미지정')===p);
+    if(!rows.length) continue;
+    total += rows.length;
+    html += `<tr class="grouphead"><td colspan="5">${esc(p)}<span class="gcount">${rows.length}개</span></td></tr>`;
+    html += rows.map(rowHtmlWeek).join('');
+  }
+  document.getElementById('tbodyW').innerHTML = total ? html
+    : '<tr><td colspan="5" class="empty">이번 주 진행할 기획안이 없습니다</td></tr>';
+  const fil = weekFilter ? `· ${weekFilter}만` : '';
+  document.getElementById('footW').textContent =
+    (q||weekFilter) ? `${total} / ${base.length}개 표시 ${fil}` : `이번 주 진행 ${base.length}개 · 제품별 · 노션 자동 연동`;
+}
+
+// ===================== 탭: 편집자 배정 (진행 중 기획안, 편집자별 묶음) =====================
+function rowHtmlAssign(r){
+  const sc = STATUS_CLASS[r.status] || 'todo';
+  const titleCell = r.url
+    ? `<a class="link" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title);
+  return `<tr>
+    <td><b>${titleCell}</b></td>
+    <td>${r.product?`<span class="tag prod">${esc(r.product)}</span>`:'-'}</td>
+    <td>${r.status?`<span class="st ${sc}">${esc(r.status)}</span>`:'-'}</td>
+    <td style="color:var(--sub)">${esc((r.created||'').slice(0,10))}</td>
+  </tr>`;
+}
+function renderAssign(){
+  if(!planData){ return; }
+  const base = planData.filter(r=>!r.done);   // 진행 중(미완료)만
+  setDot('dotA','statusA','ok','연결됨' + (planSynced? ' · '+planSynced.replace('T',' ').slice(0,16):''));
+  const assigned = base.filter(r=>(r.editors||[]).length);
+  const none = base.filter(r=>!(r.editors||[]).length);
+  kpi('kpiAsgTotal', base.length, '개');
+  kpi('kpiAsgDone', assigned.length, '개');
+  kpi('kpiAsgNone', none.length, '개');
+
+  const q = (document.getElementById('asgSearch').value||'').trim().toLowerCase();
+  const match = r => !q || (r.title||'').toLowerCase().includes(q) || (r.product||'').toLowerCase().includes(q);
+  const searched = base.filter(match);
+
+  const present = [...new Set(searched.flatMap(r=>r.editors||[]))];
+  const ordered = [...EDITOR_ORDER.filter(e=>present.includes(e)),
+                   ...present.filter(e=>!EDITOR_ORDER.includes(e))];
+  let html = '', total = 0;
+  for(const e of ordered){
+    const rows = searched.filter(r=>(r.editors||[]).includes(e));
+    if(!rows.length) continue;
+    total += rows.length;
+    html += `<tr class="grouphead"><td colspan="4">${esc(e)}<span class="gcount">${rows.length}개</span></td></tr>`;
+    html += rows.map(rowHtmlAssign).join('');
+  }
+  const noneShown = searched.filter(r=>!(r.editors||[]).length);
+  if(noneShown.length){
+    html += `<tr class="grouphead"><td colspan="4">⚠ 미배정<span class="gcount">${noneShown.length}개</span></td></tr>`;
+    html += noneShown.map(rowHtmlAssign).join('');
+  }
+  document.getElementById('tbodyA').innerHTML = html
+    || '<tr><td colspan="4" class="empty">진행 중인 기획안이 없습니다</td></tr>';
+  document.getElementById('footA').textContent =
+    `진행 ${base.length}개 · 배정 ${assigned.length} / 미배정 ${none.length} · 노션 자동 연동`;
+}
+
+// ===================== 시작 =====================
+loadEditor(); loadRef(); renderAimodel(); loadAimodelsFile(); loadMetaPlanFile();
+setInterval(()=>{ loadEditor(); loadRef(); loadAimodelsFile(); loadMetaPlanFile(); }, REFRESH_MS);
+</script>
+</body>
+</html>

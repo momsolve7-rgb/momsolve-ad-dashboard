@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>콘텐츠 광고 운영 (편집자)</title>
+<style>
+  :root{
+    --bg:#0f1220; --card:#191d31; --card2:#1f2440; --line:#2a3050;
+    --txt:#e8eaf2; --sub:#9aa0c0; --accent:#6c8cff; --accent2:#36d399;
+    --warn:#ffb020; --danger:#ff5d6c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+       background:var(--bg);color:var(--txt);}
+  .topbar{position:sticky;top:0;z-index:10;background:#141829;border-bottom:1px solid var(--line);
+          padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .brand{font-size:18px;font-weight:700;white-space:nowrap}
+  .brand small{font-size:12px;color:var(--sub);font-weight:500;margin-left:8px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{background:transparent;border:1px solid var(--line);color:var(--sub);
+       padding:8px 16px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600}
+  .tab:hover{color:var(--txt)}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .wrap{padding:24px}
+  .view{display:none}
+  .view.active{display:block}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+  h1{font-size:22px;margin:0}
+  .sub{color:var(--sub);font-size:13px;margin-top:6px}
+  .status{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:8px;justify-content:flex-end}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2)}
+  .dot.load{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+  .dot.err{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+  .card .k{color:var(--sub);font-size:13px;margin-bottom:8px}
+  .card .v{font-size:28px;font-weight:700}
+  .card .v small{font-size:14px;color:var(--sub);font-weight:500}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+  .panel h2{font-size:15px;margin:0 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:11px 10px;text-align:left;border-bottom:1px solid var(--line)}
+  th{color:var(--sub);font-weight:600;font-size:12px;white-space:nowrap}
+  tr:hover td{background:var(--card2)}
+  .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600}
+  .tag.cat{background:rgba(167,139,250,.15);color:#c4b5fd}
+  .tag.prod{background:rgba(255,176,32,.15);color:#ffd089}
+  a.link{color:#9db4ff;text-decoration:none}
+  a.link:hover{text-decoration:underline}
+  .foot{color:var(--sub);font-size:12px;text-align:center;margin-top:8px}
+  .empty{color:var(--sub);text-align:center;padding:30px}
+  .search{background:var(--card2);border:1px solid var(--line);color:var(--txt);
+          border-radius:10px;padding:9px 14px;font-size:14px;width:260px;max-width:60vw}
+  .search::placeholder{color:var(--sub)}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  a.gcard{display:block;background:var(--card2);border:1px solid var(--line);border-radius:14px;
+          overflow:hidden;text-decoration:none;color:var(--txt);transition:transform .12s,border-color .12s}
+  a.gcard:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .gcard .imgwrap{aspect-ratio:3/4;background:#0c0f1a;overflow:hidden}
+  .gcard img{width:100%;height:100%;object-fit:cover;display:block}
+  .gcard .meta{padding:10px 12px}
+  .gcard .nm{font-size:13px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .st{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+  .st.todo{background:rgba(154,160,192,.18);color:#c3c8e0}
+  .st.prog{background:rgba(108,140,255,.18);color:#9db4ff}
+  .st.appr{background:rgba(54,211,153,.18);color:#5be0ad}
+  .st.done{background:rgba(255,93,156,.18);color:#ff9ec2}
+  tr.grouphead td{background:var(--card2);font-weight:700;font-size:13px;
+        border-bottom:1px solid var(--line);padding:10px 12px}
+  tr.grouphead .gcount{color:var(--sub);font-weight:500;font-size:12px;margin-left:8px}
+  .tag.ed{font-weight:600}
+  .ed-blue{background:rgba(108,140,255,.18);color:#9db4ff}
+  .ed-green{background:rgba(54,211,153,.18);color:#5be0ad}
+  .ed-orange{background:rgba(255,176,32,.18);color:#ffd089}
+  .ed-purple{background:rgba(167,139,250,.2);color:#c4b5fd}
+  .ed-pink{background:rgba(255,93,156,.18);color:#ff9ec2}
+  .ed-gray{background:rgba(154,160,192,.18);color:#c3c8e0}
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">📊 콘텐츠 광고 운영 <small>편집자용</small></div>
+    <div class="tabs">
+      <button class="tab active" data-view="assign">🧑‍💻 편집자 배정</button>
+      <button class="tab" data-view="aimodel">✨ AI모델</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+  <!-- ============ 편집자 배정 ============ -->
+  <section class="view active" id="view-assign">
+    <div class="head">
+      <div>
+        <h1>🧑‍💻 편집자 배정</h1>
+        <div class="sub">진행 중(미완료) 기획안의 담당 편집자 · 노션 자동 연동</div>
+      </div>
+      <div class="status" style="align-self:center"><span class="dot" id="dotA"></span><span id="statusA">불러오는 중…</span></div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">진행 기획안</div><div class="v" id="kpiAsgTotal">–</div></div>
+      <div class="card"><div class="k">배정 완료</div><div class="v" id="kpiAsgDone">–</div></div>
+      <div class="card"><div class="k">미배정</div><div class="v" id="kpiAsgNone">–</div></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <h2 style="margin:0">편집자별 배정 현황 <span style="color:var(--sub);font-weight:400;font-size:12px">· 제목을 누르면 노션에서 열려요</span></h2>
+        <input class="search" id="asgSearch" placeholder="🔍 기획안·제품 검색…" oninput="renderAssign()" />
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>기획안</th><th>제품</th><th>대표님 컨펌</th><th>생성일</th></tr></thead>
+          <tbody id="tbodyA"></tbody>
+        </table>
+      </div>
+      <div class="foot" id="footA"></div>
+    </div>
+  </section>
+
+  <!-- ============ AI모델 ============ -->
+  <section class="view" id="view-aimodel">
+    <div class="head">
+      <div>
+        <h1>✨ AI모델</h1>
+        <div class="sub">통과(체크) 모델 사진 · 노션 자동 연동</div>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="k">통과 모델</div><div class="v" id="kpiModel">–</div></div>
+      <div class="card"><div class="k">일반인 계열</div><div class="v" id="kpiNormal">–</div></div>
+      <div class="card"><div class="k">예쁜모델 계열</div><div class="v" id="kpiPretty">–</div></div>
+    </div>
+    <div class="panel">
+      <h2>모델 갤러리 <span style="color:var(--sub);font-weight:400;font-size:12px">· 카드를 누르면 원본 사진이 열려요</span></h2>
+      <div class="gallery" id="gallery"></div>
+      <div class="foot" id="foot3"></div>
+    </div>
+  </section>
+
+  </div>
+
+<script>
+const NOTION_SITE = "https://violet-tumble-0a4.notion.site";
+const AIMODEL_SPACE = "0f1014dd-630a-814f-9d2b-0003710684d4";
+const REFRESH_MS = 60000;
+const STATUS_CLASS = { "확인 전":"todo", "컨펌 중":"prog", "승인 완료":"appr", "제작 완료":"done" };
+const EDITOR_ORDER = ["김나연","최서아","서다민","함신영(대표)","박설"];
+const EDITOR_COLOR = {"김나연":"ed-blue","최서아":"ed-green","서다민":"ed-orange","함신영(대표)":"ed-purple","박설":"ed-pink"};
+
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function kpi(id,val,unit){ const e=document.getElementById(id); if(e) e.innerHTML = val + (unit?`<small> ${unit}</small>`:''); }
+function setDot(id,txtId,state,msg){
+  const d=document.getElementById(id), t=document.getElementById(txtId);
+  if(d) d.className='dot'+(state==='load'?' load':state==='err'?' err':''); if(t) t.textContent=msg;
+}
+function editorTags(eds){
+  if(!eds || !eds.length) return '<span style="color:var(--sub)">미배정</span>';
+  return eds.map(e=>`<span class="tag ed ${EDITOR_COLOR[e]||'ed-gray'}">${esc(e)}</span>`).join(' ');
+}
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-' + t.dataset.view).classList.add('active');
+  });
+});
+
+// ----- 동기화 파일 <script> 주입 로더 -----
+function injectFile(src, onerr){
+  const s=document.createElement('script');
+  s.src=src+'?t='+Date.now();
+  s.onload=()=>s.remove(); s.onerror=()=>{ s.remove(); if(onerr) onerr(); };
+  document.body.appendChild(s);
+}
+
+// ===================== 편집자 배정 =====================
+let planData = null, planSynced = null;
+window.__setMetaPlan = function(rows, stamp){
+  planData = Array.isArray(rows) ? rows : [];
+  planSynced = stamp || null;
+  renderAssign();
+};
+function rowHtmlAssign(r){
+  const sc = STATUS_CLASS[r.status] || 'todo';
+  const titleCell = r.url
+    ? `<a class="link" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title);
+  return `<tr>
+    <td><b>${titleCell}</b></td>
+    <td>${r.product?`<span class="tag prod">${esc(r.product)}</span>`:'-'}</td>
+    <td>${r.status?`<span class="st ${sc}">${esc(r.status)}</span>`:'-'}</td>
+    <td style="color:var(--sub)">${esc((r.created||'').slice(0,10))}</td>
+  </tr>`;
+}
+function renderAssign(){
+  if(!planData){ return; }
+  const base = planData.filter(r=>!r.done);
+  setDot('dotA','statusA','ok','연결됨' + (planSynced? ' · '+planSynced.replace('T',' ').slice(0,16):''));
+  const assigned = base.filter(r=>(r.editors||[]).length);
+  const none = base.filter(r=>!(r.editors||[]).length);
+  kpi('kpiAsgTotal', base.length, '개'); kpi('kpiAsgDone', assigned.length, '개'); kpi('kpiAsgNone', none.length, '개');
+  const q = (document.getElementById('asgSearch').value||'').trim().toLowerCase();
+  const match = r => !q || (r.title||'').toLowerCase().includes(q) || (r.product||'').toLowerCase().includes(q);
+  const searched = base.filter(match);
+  const present = [...new Set(searched.flatMap(r=>r.editors||[]))];
+  const ordered = [...EDITOR_ORDER.filter(e=>present.includes(e)), ...present.filter(e=>!EDITOR_ORDER.includes(e))];
+  let html = '';
+  for(const e of ordered){
+    const rows = searched.filter(r=>(r.editors||[]).includes(e));
+    if(!rows.length) continue;
+    html += `<tr class="grouphead"><td colspan="4">${esc(e)}<span class="gcount">${rows.length}개</span></td></tr>`;
+    html += rows.map(rowHtmlAssign).join('');
+  }
+  const noneShown = searched.filter(r=>!(r.editors||[]).length);
+  if(noneShown.length){
+    html += `<tr class="grouphead"><td colspan="4">⚠ 미배정<span class="gcount">${noneShown.length}개</span></td></tr>`;
+    html += noneShown.map(rowHtmlAssign).join('');
+  }
+  document.getElementById('tbodyA').innerHTML = html || '<tr><td colspan="4" class="empty">진행 중인 기획안이 없습니다</td></tr>';
+  document.getElementById('footA').textContent = `진행 ${base.length}개 · 배정 ${assigned.length} / 미배정 ${none.length} · 노션 자동 연동`;
+}
+
+// ===================== AI모델 =====================
+let aimodelData = [], aimodelSynced = null;
+window.__setAimodels = function(models, stamp){
+  if(Array.isArray(models)) { aimodelData = models; aimodelSynced = stamp||null; }
+  renderAimodel();
+};
+function modelImg(m){
+  if(m.img) return m.img;
+  return `${NOTION_SITE}/image/${encodeURIComponent(m.src)}?table=block&id=${m.pageId}&spaceId=${AIMODEL_SPACE}&width=640&cache=v2`;
+}
+function renderAimodel(){
+  const list = aimodelData || [];
+  kpi('kpiModel', list.length, '개');
+  kpi('kpiNormal', list.filter(m=>m.name.includes('일반인')).length, '개');
+  kpi('kpiPretty', list.filter(m=>m.name.includes('예쁜')).length, '개');
+  document.getElementById('gallery').innerHTML = list.map(m=>{
+    const u = modelImg(m);
+    return `<a class="gcard" href="${u}" target="_blank" rel="noopener" title="${esc(m.name)}">
+      <div class="imgwrap"><img loading="lazy" src="${u}" alt="${esc(m.name)}"></div>
+      <div class="meta"><div class="nm">${esc(m.name)}</div></div>
+    </a>`;
+  }).join('') || '<div class="empty">표시할 모델이 없습니다</div>';
+  document.getElementById('foot3').textContent = `총 ${list.length}개 모델 · 노션 자동 연동`;
+}
+
+// ===================== 시작 =====================
+function loadAll(){
+  injectFile('metaplan.js', ()=>setDot('dotA','statusA','err','동기화 파일 없음'));
+  injectFile('aimodels.js');
+}
+loadAll();
+setInterval(loadAll, REFRESH_MS);
+</script>
+</body>
+</html>
