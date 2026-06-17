@@ -1,7 +1,16 @@
-/* 간단 비밀번호 잠금 (클라이언트용) — 우연한 외부 접근 차단용 */
+/* 간단 비밀번호 잠금 (클라이언트용) — 우연한 외부 접근 차단용
+   각 페이지에서 아래 전역값을 먼저 지정한 뒤 이 스크립트를 불러온다.
+     window.DASH_GATE_HASH  : 비밀번호의 SHA-256 해시(hex)
+     window.DASH_GATE_KEY   : 통과 상태 저장 키(페이지마다 다르게)
+     window.DASH_GATE_LABEL : 입력창에 보여줄 안내 문구
+*/
 (function () {
-  var KEY = "dash_auth_ok_v1";
-  var EXPECT = "b7920fb8943cd3d39ee6e54f7b2994f416eddb0a6e161f5bed4f28322f4b570b";
+  var EXPECT = window.DASH_GATE_HASH || "";
+  var KEY = window.DASH_GATE_KEY || "dash_auth_ok_v1";
+  var LABEL = window.DASH_GATE_LABEL || "비밀번호를 입력하세요";
+
+  // 해시 설정이 없으면 잠금 없이 통과
+  if (!EXPECT) return;
 
   // 이미 이번 세션에서 통과했으면 통과
   if (sessionStorage.getItem(KEY) === "1") return;
@@ -24,23 +33,25 @@
         .digest("SHA-256", new TextEncoder().encode(s))
         .then(toHex);
     }
-    // 보안 컨텍스트가 아니면(예: 일부 file:// 환경) 평문 대체
-    return Promise.resolve("PLAIN:" + s);
+    return Promise.resolve("");
+  }
+
+  function blockScreen() {
+    de.style.visibility = "";
+    document.addEventListener("DOMContentLoaded", function () {
+      document.body.innerHTML =
+        '<div style="font-family:sans-serif;color:#888;text-align:center;margin-top:25vh">접근하려면 새로고침 후 비밀번호를 입력하세요.</div>';
+    });
   }
 
   function ask() {
-    var p = window.prompt("비밀번호를 입력하세요");
+    var p = window.prompt(LABEL);
     if (p === null) {
-      // 취소 시 빈 화면 유지
-      de.style.visibility = "";
-      document.addEventListener("DOMContentLoaded", function () {
-        document.body.innerHTML =
-          '<div style="font-family:sans-serif;color:#888;text-align:center;margin-top:25vh">접근하려면 새로고침 후 비밀번호를 입력하세요.</div>';
-      });
+      blockScreen();
       return;
     }
     hash(p).then(function (h) {
-      if (h === EXPECT || h === "PLAIN:momsolve2026") {
+      if (h && h === EXPECT) {
         sessionStorage.setItem(KEY, "1");
         de.style.visibility = "";
       } else {
